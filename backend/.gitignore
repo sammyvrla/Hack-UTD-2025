@@ -1,0 +1,51 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Builds / coverage
+build/
+dist/
+coverage/
+.nyc_output/
+
+# Caches
+.cache/
+.parcel-cache/
+.eslintcache
+.turbo/
+
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Misc
+*.sqlite
+*.db
+*.db-journal
+
+# Docker local data
+Dockerfile.local
+.docker/
+docker-data/
+
+# Next/React (safe if present in mono repo)
+.next/
+.out/

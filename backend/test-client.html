@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Happiness Index – WS Test</title>
+    <style>
+      body { font-family: system-ui, Arial, sans-serif; margin: 20px; }
+      pre { background: #111; color: #0f0; padding: 10px; height: 300px; overflow: auto; }
+      .row { display: flex; gap: 16px; }
+      .card { border: 1px solid #ccc; padding: 10px; border-radius: 8px; width: 48%; }
+      .pill { display:inline-block; background:#eef; padding:2px 8px; border-radius: 10px; margin-left:6px; }
+    </style>
+  </head>
+  <body>
+    <h1>WebSocket Live Test</h1>
+    <p>Status: <span id="status">connecting…</span></p>
+    <div class="row">
+      <div class="card">
+        <h3>Live Metrics <span class="pill" id="metricCount">0</span></h3>
+        <pre id="metrics"></pre>
+      </div>
+      <div class="card">
+        <h3>Aggregates <span class="pill" id="aggCount">0</span></h3>
+        <pre id="aggregates"></pre>
+      </div>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById('status');
+      const metricsEl = document.getElementById('metrics');
+      const aggsEl = document.getElementById('aggregates');
+      const metricCountEl = document.getElementById('metricCount');
+      const aggCountEl = document.getElementById('aggCount');
+      let mCount = 0, aCount = 0;
+
+      const ws = new WebSocket('ws://localhost:4000');
+      ws.onopen = () => statusEl.textContent = 'connected';
+      ws.onclose = () => statusEl.textContent = 'closed';
+      ws.onerror = () => statusEl.textContent = 'error (see console)';
+
+      ws.onmessage = (evt) => {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'metric') {
+          mCount++;
+          metricCountEl.textContent = mCount;
+          metricsEl.textContent = JSON.stringify(msg.metric, null, 2) + "\n" + metricsEl.textContent;
+        } else if (msg.type === 'aggregate') {
+          aCount++;
+          aggCountEl.textContent = aCount;
+          aggsEl.textContent = JSON.stringify(msg.rows[0], null, 2) + "\n" + aggsEl.textContent;
+        } else {
+          metricsEl.textContent = JSON.stringify(msg, null, 2) + "\n" + metricsEl.textContent;
+        }
+      };
+    </script>
+  </body>
+</html>

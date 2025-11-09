@@ -1,0 +1,19 @@
+{
+  "name": "happiness-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "worker": "node ingestWorker.js",
+    "simulate": "node simulateData.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "pg": "^8.13.1",
+    "redis": "^4.7.0",
+    "uuid": "^11.0.3",
+    "ws": "^8.18.0"
+  }
+}
