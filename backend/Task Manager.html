@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>T-Mobile — Customer Happiness Dashboard</title>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Simple Task Manager style */
+    :root{
+      --bg:#0f1720; --panel:#0b1220; --muted:#9aa4b2; --accent:#00a8ff;
+      --good:#16a34a; --bad:#ef4444; --card-radius:12px;
+    }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#061224 0%, #071026 100%);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;}
+    .container{max-width:1200px;margin:24px auto;padding:20px;color:#e6eef8;}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+    h1{font-size:20px;margin:0}
+    .subtitle{color:var(--muted);font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
+    .card{background:var(--panel);border-radius:var(--card-radius);padding:14px;box-shadow:0 6px 18px rgba(2,6,23,0.6);overflow:hidden}
+    /* Table */
+    .table-wrap{max-height:560px;overflow:auto;border-radius:8px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead th{position:sticky;top:0;background:rgba(7,14,22,0.9);color:var(--muted);text-align:left;padding:10px 12px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.03)}
+    tbody tr{border-bottom:1px solid rgba(255,255,255,0.03)}
+    td{padding:10px 12px;color:#dbeafe}
+    tr:hover td{background:rgba(255,255,255,0.02)}
+    .tiny{font-size:12px;color:var(--muted)}
+    .right{text-align:right}
+    .pill{display:inline-block;padding:6px 8px;border-radius:999px;font-weight:600;font-size:12px}
+    .good{background:rgba(22,163,74,0.12);color:var(--good)} .warn{background:rgba(250,204,21,0.12);color:#f59e0b} .bad{background:rgba(239,68,68,0.12);color:var(--bad)}
+    /* chart */
+    .chart-wrap{height:260px}
+    footer{margin-top:14px;color:var(--muted);font-size:13px}
+    .meta{display:flex;gap:12px;align-items:center}
+    .refresh-btn{background:#071a2b;border:1px solid rgba(255,255,255,0.03);color:var(--muted);padding:8px 10px;border-radius:8px;cursor:pointer}
+    .small{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>T-Mobile Customer Happiness Dashboard</h1>
+        <div class="subtitle">Real-time network table (30-min) • Daily Happiness Index (midnight)</div>
+      </div>
+      <div class="meta">
+        <div class="small" id="last-network">Network updated: —</div>
+        <div class="small" id="last-happy">Happiness last date: —</div>
+        <button class="refresh-btn" id="manual-refresh">Refresh Now</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Left: Task-Manager-style table -->
+      <div class="card">
+        <h3 style="margin:0 0 10px 0">Network Performance — Towers</h3>
+        <div class="table-wrap" id="network-table-wrap">
+          <table id="network-table" aria-describedby="network-table-wrap">
+            <thead>
+              <tr>
+                <th>Tower / Market</th>
+                <th class="right">Latency (ms)</th>
+                <th class="right">Packet Loss (%)</th>
+                <th class="right">Outage Rate</th>
+                <th class="right">Load (%)</th>
+                <th class="right">Sessions</th>
+              </tr>
+            </thead>
+            <tbody id="network-body">
+              <!-- Rows injected by JS -->
+            </tbody>
+          </table>
+        </div>
+        <footer>
+          <div class="small">Showing latest snapshot for each tower. Table refreshes every 30 minutes.</div>
+        </footer>
+      </div>
+
+      <!-- Right: Happiness chart -->
+      <div class="card">
+        <h3 style="margin:0 0 10px 0">Overall Customer Happiness Index — Daily</h3>
+        <div class="chart-wrap">
+          <canvas id="happinessChart" width="400" height="260"></canvas>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:10px;align-items:center">
+          <div class="tiny" id="today-index">Today's index: —</div>
+          <div>
+            <button class="refresh-btn" id="refresh-chart">Refresh Chart</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Assumptions:
+  - network JSON is available at: /network_metrics.json
+    Each record expected (example):
+    { "tower_id":"TMBL-001", "location":"Downtown", "avg_latency_ms":41.7, "avg_packet_loss_pct":0.33, "outage_rate_pct":0.02, "network_load_percent":62, "active_sessions":1234 }
+  - daily happiness CSV at: /daily_happiness.csv with header: date,customer_happiness_index
+    date format in CSV should be readable (e.g. 11/08/25 or 2025-11-08)
+*/
+
+// CONFIG: update endpoints if your server uses different paths
+const NETWORK_ENDPOINT = '/network_metrics.json';
+const HAPPINESS_CSV_ENDPOINT = '/daily_happiness.csv';
+
+// Auto-refresh intervals
+const NETWORK_REFRESH_MS = 30 * 60 * 1000; // 30 minutes
+const HAPPINESS_REFRESH_MS = 24 * 60 * 60 * 1000; // daily (but we also refresh on load/manual click)
+
+// DOM refs
+const networkBody = document.getElementById('network-body');
+const lastNetwork = document.getElementById('last-network');
+const lastHappy = document.getElementById('last-happy');
+const manualRefreshBtn = document.getElementById('manual-refresh');
+const refreshChartBtn = document.getElementById('refresh-chart');
+const todayIndexEl = document.getElementById('today-index');
+
+let happinessChart = null;
+
+// Utility: format number to 2 decimals
+function fmt(n, d=2){ return (n===null||n===undefined) ? '—' : Number(n).toFixed(d); }
+
+// Fetch network metrics JSON and render table
+async function loadNetworkMetrics(){
+  try{
+    const res = await fetch(NETWORK_ENDPOINT + '?_ts=' + Date.now());
+    if(!res.ok) throw new Error('Network JSON fetch failed: ' + res.status);
+    const data = await res.json();
+
+    // data might be array of tower records; prefer to show sorted by load or latency
+    data.sort((a,b) => (b.network_load_percent||0) - (a.network_load_percent||0)); // highest load top
+
+    // Build table rows (limit to 300 rows to be safe)
+    const rows = data.slice(0, 500);
+    networkBody.innerHTML = '';
+    for(const r of rows){
+      // outage_rate_pct may be 0-1 or 0-100; handle both
+      let outage = r.outage_rate_pct;
+      if (outage <= 1) outage = outage * 100;
+      const tr = document.createElement('tr');
+
+      tr.innerHTML = `
+        <td><strong>${escapeHtml(r.tower_id || r.market_id || '—')}</strong><div class="tiny">${escapeHtml(r.location||'')}</div></td>
+        <td class="right">${fmt(r.avg_latency_ms||r.latencyMs||r.avg_latency,0)}</td>
+        <td class="right">${fmt((r.avg_packet_loss_pct || r.packet_loss_pct || r.packet_loss || 0),2)}</td>
+        <td class="right">${fmt(outage,2)}%</td>
+        <td class="right">${fmt(r.network_load_percent || r.networkLoad || 0,0)}%</td>
+        <td class="right">${fmt(r.active_sessions || r.sessions || 0,0)}</td>
+      `;
+      // color row for high latency / outage
+      const lat = Number(r.avg_latency_ms || r.latencyMs || r.avg_latency || 0);
+      const pkt = Number(r.avg_packet_loss_pct || r.packet_loss_pct || r.packet_loss || 0);
+      if(lat > 120 || pkt > 2.0) tr.classList.add('bad'); // visually mark
+      else if(lat > 80 || pkt > 1.0) tr.classList.add('warn');
+      else tr.classList.add('good');
+
+      networkBody.appendChild(tr);
+    }
+
+    lastNetwork.textContent = 'Network updated: ' + new Date().toLocaleString();
+  }catch(err){
+    console.error('loadNetworkMetrics error', err);
+    lastNetwork.textContent = 'Network updated: (error)';
+  }
+}
+
+// Fetch daily happiness CSV and render chart
+async function loadHappinessCSV(){
+  try{
+    const res = await fetch(HAPPINESS_CSV_ENDPOINT + '?_ts=' + Date.now());
+    if(!res.ok) throw new Error('CSV fetch failed: ' + res.status);
+    const txt = await res.text();
+    const lines = txt.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    if(lines.length <= 1) {
+      lastHappy.textContent = 'Happiness last date: (no data)';
+      return;
+    }
+    // parse CSV header & rows (simple parser)
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const rows = lines.slice(1).map(l => {
+      // naive split on comma (acceptable for simple CSVs)
+      const cols = l.split(',');
+      const obj = {};
+      header.forEach((h,i)=> obj[h] = cols[i] ? cols[i].trim() : '');
+      return obj;
+    });
+
+    // expect headers: date,customer_happiness_index (case-insensitive)
+    const points = rows.map(r=>{
+      // normalize date string for label
+      const dateLabel = r.date || r.day || Object.values(r)[0];
+      const val = parseFloat(r.customer_happiness_index || r.value || Object.values(r)[1]) || 0;
+      return { date: dateLabel, value: val };
+    }).slice(-180); // keep last 180 days max
+
+    // update chart
+    updateHappinessChart(points);
+
+    lastHappy.textContent = 'Happiness last date: ' + (points.length ? points[points.length-1].date : '—');
+    todayIndexEl.textContent = "Today's index: " + (points.length ? points[points.length-1].value : '—');
+  }catch(err){
+    console.error('loadHappinessCSV error', err);
+    lastHappy.textContent = 'Happiness last date: (error)';
+  }
+}
+
+// draw or update the Chart.js line
+function updateHappinessChart(points){
+  const ctx = document.getElementById('happinessChart').getContext('2d');
+  const labels = points.map(p => p.date);
+  const data = points.map(p => p.value);
+
+  if(happinessChart){
+    happinessChart.data.labels = labels;
+    happinessChart.data.datasets[0].data = data;
+    happinessChart.update();
+    return;
+  }
+  happinessChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Customer Happiness Index',
+        data,
+        borderColor: 'rgba(0,168,255,0.95)',
+        backgroundColor: 'rgba(0,168,255,0.08)',
+        tension: 0.25,
+        fill: true,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      responsive:true,
+      maintainAspectRatio:false,
+      scales: {
+        x: { ticks:{color:'#9aa4b2'} },
+        y: { beginAtZero:true, ticks:{color:'#9aa4b2'} }
+      },
+      plugins: { legend: { display:false }, tooltip:{mode:'index',intersect:false} }
+    }
+  });
+}
+
+// small helper to avoid injection
+function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+// initial load + intervals
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadNetworkMetrics();
+  loadHappinessCSV();
+
+  // schedule updates
+  setInterval(loadNetworkMetrics, NETWORK_REFRESH_MS); // every 30 minutes
+  // happiness runs daily (we'll also refresh on manual)
+  setInterval(loadHappinessCSV, HAPPINESS_REFRESH_MS);
+
+  // manual refresh hooks
+  manualRefreshBtn.addEventListener('click', ()=>{ loadNetworkMetrics(); loadHappinessCSV(); });
+  refreshChartBtn.addEventListener('click', ()=> loadHappinessCSV());
+});
+</script>
+</body>
+</html>
