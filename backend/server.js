@@ -102,6 +102,58 @@ app.get('/aggregate', async (req, res) => {
   }
 });
 
+// Latest snapshot per market for network performance (supports test HTML dashboard)
+app.get('/network_metrics.json', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      WITH latest AS (
+        SELECT market_id, max(ts) AS ts
+        FROM network_metrics
+        GROUP BY market_id
+      )
+      SELECT nm.market_id,
+             nm.avg_latency_ms,
+             nm.packet_loss_ratio AS avg_packet_loss_pct,
+             nm.network_load_percent,
+             nm.active_sessions,
+             COALESCE(CASE WHEN cm.outage_flag = 1 THEN 0 ELSE 100 END, 100) AS outage_rate_pct
+      FROM network_metrics nm
+      JOIN latest l ON l.market_id = nm.market_id AND l.ts = nm.ts
+      LEFT JOIN LATERAL (
+        SELECT outage_flag
+        FROM coverage_metrics c2
+        WHERE c2.market_id = nm.market_id
+        ORDER BY c2.ts DESC
+        LIMIT 1
+      ) cm ON TRUE;
+    `);
+    res.json(rows);
+  } catch (e) {
+    console.error('network_metrics.json error', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Daily happiness index (CSV) derived from happiness_index_calc (averaged by day)
+app.get('/daily_happiness.csv', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT to_char(date_trunc('day', bucket), 'YYYY-MM-DD') AS date,
+             ROUND(AVG(final_index)::numeric, 2) AS customer_happiness_index
+      FROM happiness_index_calc
+      GROUP BY 1
+      ORDER BY 1;
+    `);
+    const header = 'date,customer_happiness_index';
+    const lines = rows.map(r => `${r.date},${r.customer_happiness_index}`);
+    res.setHeader('Content-Type', 'text/csv');
+    res.send([header, ...lines].join('\n'));
+  } catch (e) {
+    console.error('daily_happiness.csv error', e.message);
+    res.status(500).send('error,' + e.message);
+  }
+});
+
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
