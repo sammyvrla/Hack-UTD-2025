@@ -4,6 +4,8 @@ import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
 import pool from './db/db.js';
 import { sub } from './redis.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
@@ -192,4 +194,10 @@ setInterval(async () => {
 }, 5000);
 
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => console.log(`Backend listening on ${PORT}`));
+// Serve the dashboard statically at /dashboard so other devices on LAN can access
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/dashboard', express.static(path.join(__dirname, 'generator')));
+app.get('/', (req, res) => res.redirect('/dashboard/happinessindicator.html'));
+
+server.listen(PORT, '0.0.0.0', () => console.log(`Backend listening on ${PORT}`));
