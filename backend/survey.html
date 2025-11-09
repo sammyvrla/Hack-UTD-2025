@@ -357,7 +357,8 @@
                     if (payload.answers[k] === undefined || payload.answers[k] === '') delete payload.answers[k];
                 });
                 try {
-                    const res = await fetch('http://localhost:4000/survey', {
+                      // Use 127.0.0.1 to match your page origin host and avoid DNS differences
+                      const res = await fetch('http://127.0.0.1:4000/survey', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
