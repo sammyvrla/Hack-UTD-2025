@@ -21,9 +21,16 @@ CREATE TABLE IF NOT EXISTS customer_surveys (
   channel TEXT,
   sentiment_raw INT,
   nps_score INT,
-  free_text TEXT
+  free_text TEXT,
+  -- Flexible container for arbitrary survey answers (per-question values)
+  answers JSONB DEFAULT '{}'::jsonb
 );
 CREATE INDEX IF NOT EXISTS idx_surveys_submitted_at ON customer_surveys (submitted_at DESC);
+
+-- Backward/upgrade safety if table already existed before `answers` was added
+ALTER TABLE customer_surveys
+  ADD COLUMN IF NOT EXISTS answers JSONB DEFAULT '{}'::jsonb;
+CREATE INDEX IF NOT EXISTS idx_surveys_answers_gin ON customer_surveys USING GIN (answers);
 
 -- csat scores snapshots
 CREATE TABLE IF NOT EXISTS csat_scores (
