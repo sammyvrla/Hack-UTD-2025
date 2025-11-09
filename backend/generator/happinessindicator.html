@@ -100,6 +100,11 @@ const HAPPINESS_CSV_ENDPOINT = 'http://127.0.0.1:4000/daily_happiness.csv';
 const NETWORK_REFRESH_MS = 60 * 1000; // 1 min
 const HAPPINESS_REFRESH_MS = 24 * 60 * 60 * 1000; // daily
 
+// Preset configuration for chart seeding
+const PRESET_DAYS = 90;
+const TM_MAGENTA = '#e20074';
+const SEED_KEY = 'happySeed';
+
 const networkBody = document.getElementById('network-body');
 const lastNetwork = document.getElementById('last-network');
 const lastHappy = document.getElementById('last-happy');
@@ -145,19 +150,25 @@ async function loadHappinessCSV(){
     if(!res.ok) throw new Error(res.status);
     const txt = await res.text();
     const lines = txt.trim().split('\n').filter(Boolean);
-    if(lines.length<=1){lastHappy.textContent='Happiness last date: (no data)'; return;}
-    const header = lines[0].split(',').map(h=>h.trim().toLowerCase());
-    const rows = lines.slice(1).map(l=>{
-      const cols = l.split(',');
-      const obj={};
-      header.forEach((h,i)=>obj[h]=cols[i]?cols[i].trim():'');
-      return obj;
-    });
-    const points = rows.map(r=>{
-      const dateLabel=r.date||Object.values(r)[0];
-      const val=parseFloat(r.customer_happiness_index||Object.values(r)[1])||0;
-      return {date:dateLabel,value:val};
-    }).slice(-180);
+    // Parse CSV (if any)
+    let csvPoints = [];
+    if(lines.length>1){
+      const header = lines[0].split(',').map(h=>h.trim().toLowerCase());
+      const rows = lines.slice(1).map(l=>{
+        const cols = l.split(',');
+        const obj={};
+        header.forEach((h,i)=>obj[h]=cols[i]?cols[i].trim():'');
+        return obj;
+      });
+      csvPoints = rows.map(r=>{
+        const dateLabel=r.date||Object.values(r)[0];
+        const val=parseFloat(r.customer_happiness_index||Object.values(r)[1])||0;
+        return {date:dateLabel,value:val};
+      });
+    }
+
+    // Build seeded series with PRESET_DAYS window merged with CSV (CSV overrides seed on same day)
+    const points = buildSeededSeries(csvPoints, PRESET_DAYS);
     updateHappinessChart(points);
     lastHappy.textContent='Happiness last date: '+(points.length?points[points.length-1].date:'—');
     todayIndexEl.textContent="Today's index: "+(points.length?points[points.length-1].value:'—');
@@ -175,8 +186,15 @@ function updateHappinessChart(points){
   }
   happinessChart=new Chart(ctx,{
     type:'line',
-    data:{labels,datasets:[{label:'Customer Happiness Index',data,borderColor:'rgba(0,168,255,0.95)',backgroundColor:'rgba(0,168,255,0.08)',tension:0.25,fill:true,pointRadius:0}]},
-    options:{responsive:true,maintainAspectRatio:false,scales:{x:{ticks:{color:'#9aa4b2'}},y:{beginAtZero:true,ticks:{color:'#9aa4b2'}}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}}}
+    data:{labels,datasets:[{label:'Customer Happiness Index',data,borderColor:TM_MAGENTA,backgroundColor:'rgba(226,0,116,0.15)',tension:0.3,fill:true,pointRadius:0,borderWidth:2}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      scales:{
+        x:{ticks:{color:'#f2cfe0'},grid:{color:'rgba(226,0,116,0.08)'}},
+        y:{beginAtZero:true,ticks:{color:'#f2cfe0'},grid:{color:'rgba(226,0,116,0.08)'}}
+      },
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'#0b1220',titleColor:'#e6eef8',bodyColor:'#e6eef8'}}
+    }
   });
 }
 
@@ -189,7 +207,71 @@ document.addEventListener('DOMContentLoaded',()=>{
   setInterval(loadHappinessCSV,HAPPINESS_REFRESH_MS);
   manualRefreshBtn.addEventListener('click',()=>{loadNetworkMetrics(); loadHappinessCSV();});
   refreshChartBtn.addEventListener('click',()=>loadHappinessCSV());
+  // Schedule an append at midnight to keep the chart lively even without backend daily aggregates
+  scheduleMidnightAppend();
 });
+
+// ----- Seeding helpers -----
+function buildSeededSeries(csvPoints, days){
+  // Build last N dates (YYYY-MM-DD)
+  const dates = lastNDates(days);
+  // Load existing seed from localStorage
+  let seed = [];
+  try{ seed = JSON.parse(localStorage.getItem(SEED_KEY)||'[]'); }catch(_){ seed = []; }
+  const seedMap = new Map(seed.map(p=>[p.date, Number(p.value)||0]));
+  // CSV overrides seed on same day
+  const csvMap = new Map((csvPoints||[]).map(p=>[p.date, Number(p.value)||0]));
+  // Ensure we have a value for each date; generate random when missing
+  const out = dates.map(d=>{
+    const v = csvMap.has(d) ? csvMap.get(d) : (seedMap.has(d) ? seedMap.get(d) : Math.round(Math.random()*100));
+    return {date:d, value:v};
+  });
+  // Save merged seed back (only dates window)
+  try{ localStorage.setItem(SEED_KEY, JSON.stringify(out)); }catch(_){ }
+  return out;
+}
+
+function lastNDates(n){
+  const arr=[]; const today=new Date();
+  for(let i=n-1;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); arr.push(fmtDate(d)); }
+  return arr;
+}
+
+function fmtDate(d){
+  const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function scheduleMidnightAppend(){
+  const now=new Date();
+  const next=new Date(now);
+  next.setHours(24,0,0,0); // next midnight
+  const wait=next-now;
+  setTimeout(()=>{ appendDailyPoint(); scheduleMidnightAppend(); }, wait);
+}
+
+function appendDailyPoint(){
+  let seed=[]; try{ seed=JSON.parse(localStorage.getItem(SEED_KEY)||'[]'); }catch(_){ seed=[]; }
+  const todayStr = fmtDate(new Date());
+  // If today's point exists, skip; else append a new random value and slide window
+  const exists = seed.some(p=>p.date===todayStr);
+  if(!exists){
+    seed.push({date: todayStr, value: Math.round(Math.random()*100)});
+  }
+  // Keep only last PRESET_DAYS
+  if(seed.length>PRESET_DAYS) seed = seed.slice(seed.length-PRESET_DAYS);
+  try{ localStorage.setItem(SEED_KEY, JSON.stringify(seed)); }catch(_){ }
+  // Update chart if present
+  if(happinessChart){
+    const labels = seed.map(p=>p.date);
+    const data = seed.map(p=>p.value);
+    happinessChart.data.labels=labels;
+    happinessChart.data.datasets[0].data=data;
+    happinessChart.update();
+    lastHappy.textContent='Happiness last date: '+(labels[labels.length-1]||'—');
+    todayIndexEl.textContent="Today's index: "+(data[data.length-1]??'—');
+  }
+}
 </script>
 </body>
 </html>
