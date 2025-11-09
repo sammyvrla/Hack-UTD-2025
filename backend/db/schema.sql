@@ -80,3 +80,69 @@ SELECT add_continuous_aggregate_policy('happiness_index',
 
 -- retention policy for raw high volume metrics (7 days)
 SELECT add_retention_policy('network_metrics', INTERVAL '7 days');
+
+-- Additional domain tables for comprehensive market metrics
+
+-- Network health scores per market (numeric-friendly + 0/1 service flag)
+CREATE TABLE IF NOT EXISTS network_health (
+  ts TIMESTAMPTZ NOT NULL,
+  market_id TEXT NOT NULL,
+  latency_score NUMERIC(5,2),     -- 0-100 higher is better
+  packet_loss_score NUMERIC(5,2), -- 0-100 higher is better
+  service_ok SMALLINT             -- 1 = healthy, 0 = outage
+);
+SELECT create_hypertable('network_health','ts', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_network_health_market_ts ON network_health (market_id, ts DESC);
+
+-- Consumer sentiment: survey & review scores
+CREATE TABLE IF NOT EXISTS sentiment_scores (
+  ts TIMESTAMPTZ NOT NULL,
+  market_id TEXT NOT NULL,
+  survey_score NUMERIC(5,2),   -- 1-5
+  review_score NUMERIC(5,2)    -- 1-5
+);
+SELECT create_hypertable('sentiment_scores','ts', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_sentiment_scores_market_ts ON sentiment_scores (market_id, ts DESC);
+
+-- Behavioral engagement signals
+CREATE TABLE IF NOT EXISTS engagement_metrics (
+  ts TIMESTAMPTZ NOT NULL,
+  market_id TEXT NOT NULL,
+  retention_score NUMERIC(5,2),       -- 0-100
+  likely_remain_months NUMERIC(6,2)   -- months
+);
+SELECT create_hypertable('engagement_metrics','ts', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_engagement_metrics_market_ts ON engagement_metrics (market_id, ts DESC);
+
+-- Market context vs business
+CREATE TABLE IF NOT EXISTS market_context (
+  ts TIMESTAMPTZ NOT NULL,
+  market_id TEXT NOT NULL,
+  avg_income_usd NUMERIC(12,2),
+  sales_usd NUMERIC(12,2),
+  business_index NUMERIC(6,2)   -- derived score 0-100
+);
+SELECT create_hypertable('market_context','ts', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_market_context_market_ts ON market_context (market_id, ts DESC);
+
+-- Brand market awareness & reach
+CREATE TABLE IF NOT EXISTS brand_market (
+  ts TIMESTAMPTZ NOT NULL,
+  market_id TEXT NOT NULL,
+  brand_market_score NUMERIC(5,2), -- 0-100
+  ad_reach NUMERIC(12,2)           -- impressions
+);
+SELECT create_hypertable('brand_market','ts', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_brand_market_market_ts ON brand_market (market_id, ts DESC);
+
+-- Social signals
+CREATE TABLE IF NOT EXISTS social_metrics (
+  ts TIMESTAMPTZ NOT NULL,
+  market_id TEXT NOT NULL,
+  shares INT,
+  likes INT,
+  posts INT,
+  comments INT
+);
+SELECT create_hypertable('social_metrics','ts', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_social_metrics_market_ts ON social_metrics (market_id, ts DESC);

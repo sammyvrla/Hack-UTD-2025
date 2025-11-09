@@ -7,7 +7,8 @@
     "start": "node server.js",
     "worker": "node ingestWorker.js",
     "simulate": "node simulateData.js",
-    "surveys": "node list-surveys.js"
+    "surveys": "node list-surveys.js",
+    "generate:dfw": "node dfwDataGenerator.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
