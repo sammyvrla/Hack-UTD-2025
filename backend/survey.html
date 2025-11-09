@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T-Mobile Customer Satisfaction Survey</title>
+    <style>
+      /* Prefer URW Antiqua Regular Extra Narrow or Schotis Text Semi Bold if installed */
+      header h1 {
+        font-family: "URW Antiqua Regular Extra Narrow", Times, serif;
+        font-weight: 600;
+      }
+    </style>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #fff;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #e20074;
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 2px solid #e20074;
+            border-radius: 10px;
+            background-color: #fff;
+        }
+        .question {
+            margin-bottom: 20px;
+        }
+        .question label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .rating, .yesno {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .rating input, .yesno input {
+            display: none;
+        }
+        .rating label, .yesno label {
+            cursor: pointer;
+            padding: 10px;
+            border: 1px solid #e20074;
+            border-radius: 5px;
+            background-color: #fff;
+            color: #e20074;
+            transition: all 0.3s;
+            margin: 5px;
+            flex: 1;
+            text-align: center;
+        }
+        .rating input:checked + label,
+        .yesno input:checked + label {
+            background-color: #e20074;
+            color: #fff;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #e20074;
+            resize: vertical;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #e20074;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #c00063;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>T-Mobile Customer Satisfaction Survey</h1>
+    </header>
+    <div class="container">
+    <form id="survey-form">
+            <!-- Overall Satisfaction & Experience -->
+            <div class="question">
+                <label>How satisfied are you with T-Mobile overall?</label>
+                <div class="rating">
+                    <input type="radio" id="overall-1" name="overall" value="1"><label for="overall-1">1</label>
+                    <input type="radio" id="overall-2" name="overall" value="2"><label for="overall-2">2</label>
+                    <input type="radio" id="overall-3" name="overall" value="3"><label for="overall-3">3</label>
+                    <input type="radio" id="overall-4" name="overall" value="4"><label for="overall-4">4</label>
+                    <input type="radio" id="overall-5" name="overall" value="5"><label for="overall-5">5</label>
+                </div>
+            </div>
+            <div class="question">
+                <label>How likely are you to recommend T-Mobile to a friend or family member? (0–10 scale)</label>
+                <div class="rating">
+                    <input type="radio" id="rec-1" name="recommend" value="1"><label for="rec-1">1</label>
+                    <input type="radio" id="rec-2" name="recommend" value="2"><label for="rec-2">2</label>
+                    <input type="radio" id="rec-3" name="recommend" value="3"><label for="rec-3">3</label>
+                    <input type="radio" id="rec-4" name="recommend" value="4"><label for="rec-4">4</label>
+                    <input type="radio" id="rec-5" name="recommend" value="5"><label for="rec-5">5</label>
+                </div>
+            </div>
+            <div class="question">
+                <label>How well does T-Mobile meet your wireless service needs?</label>
+                <div class="rating">
+                    <input type="radio" id="needs-1" name="needs" value="1"><label for="needs-1">Does not meet needs</label>
+                    <input type="radio" id="needs-2" name="needs" value="2"><label for="needs-2">Somewhat meets needs</label>
+                    <input type="radio" id="needs-3" name="needs" value="3"><label for="needs-3">Meets needs</label>
+                    <input type="radio" id="needs-4" name="needs" value="4"><label for="needs-4">Mostly meets needs</label>
+                    <input type="radio" id="needs-5" name="needs" value="5"><label for="needs-5">Exceeds needs</label>
+                </div>
+            </div>
+
+
+            <!-- Network Performance & Reliability -->
+            <div class="question">
+                <label>How satisfied are you with the reliability of T-Mobile’s network?</label>
+                <div class="rating">
+                    <input type="radio" id="reliability-1" name="reliability" value="1"><label for="reliability-1">1</label>
+                    <input type="radio" id="reliability-2" name="reliability" value="2"><label for="reliability-2">2</label>
+                    <input type="radio" id="reliability-3" name="reliability" value="3"><label for="reliability-3">3</label>
+                    <input type="radio" id="reliability-4" name="reliability" value="4"><label for="reliability-4">4</label>
+                    <input type="radio" id="reliability-5" name="reliability" value="5"><label for="reliability-5">5</label>
+                </div>
+            </div>
+            <div class="question">
+                <label>How satisfied are you with your network speeds (calling, texting, data)?</label>
+                <div class="rating">
+                    <input type="radio" id="speed-1" name="speed" value="1"><label for="speed-1">1</label>
+                    <input type="radio" id="speed-2" name="speed" value="2"><label for="speed-2">2</label>
+                    <input type="radio" id="speed-3" name="speed" value="3"><label for="speed-3">3</label>
+                    <input type="radio" id="speed-4" name="speed" value="4"><label for="speed-4">4</label>
+                    <input type="radio" id="speed-5" name="speed" value="5"><label for="speed-5">5</label>
+                </div>
+            </div>
+            <div class="question">
+                <label>In the past 30 days, how often have you experienced dropped calls or service interruptions?</label>
+                <div class="rating">
+                    <input type="radio" id="drops-1" name="drops" value="1"><label for="drops-1">Never</label>
+                    <input type="radio" id="drops-2" name="drops" value="2"><label for="drops-2">Rarely</label>
+                    <input type="radio" id="drops-3" name="drops" value="3"><label for="drops-3">Sometimes</label>
+                    <input type="radio" id="drops-4" name="drops" value="4"><label for="drops-4">Often</label>
+                    <input type="radio" id="drops-5" name="drops" value="5"><label for="drops-5">Very often</label>
+                </div>
+            </div>
+
+
+            <!-- Plan & Billing Clarity -->
+            <div class="question">
+                <label>How satisfied are you with the value of your T-Mobile plan for the price you pay?</label>
+                <div class="rating">
+                    <input type="radio" id="value-1" name="value" value="1"><label for="value-1">1</label>
+                    <input type="radio" id="value-2" name="value" value="2"><label for="value-2">2</label>
+                    <input type="radio" id="value-3" name="value" value="3"><label for="value-3">3</label>
+                    <input type="radio" id="value-4" name="value" value="4"><label for="value-4">4</label>
+                    <input type="radio" id="value-5" name="value" value="5"><label for="value-5">5</label>
+                </div>
+            </div>
+
+
+            <div class="question">
+                <label>How easy is it to understand your bill?</label>
+                <div class="rating">
+                    <input type="radio" id="bill-1" name="bill" value="1"><label for="bill-1">Very difficult</label>
+                    <input type="radio" id="bill-2" name="bill" value="2"><label for="bill-2">Difficult</label>
+                    <input type="radio" id="bill-3" name="bill" value="3"><label for="bill-3">Neutral</label>
+                    <input type="radio" id="bill-4" name="bill" value="4"><label for="bill-4">Easy</label>
+                    <input type="radio" id="bill-5" name="bill" value="5"><label for="bill-5">Very easy</label>
+                </div>
+            </div>
+
+
+            <div class="question">
+                <label>Have you noticed any unexpected charges on your bill?</label>
+                <div class="yesno">
+                    <input type="radio" id="charges-yes" name="charges" value="yes"><label for="charges-yes">Yes</label>
+                    <input type="radio" id="charges-no" name="charges" value="no"><label for="charges-no">No</label>
+                </div>
+                <textarea placeholder="Optional explanation..."></textarea>
+            </div>
+
+
+            <!-- Customer Service / Support -->
+            <div class="question">
+                <label>How satisfied are you with the resolution of your most recent support interaction?</label>
+                <div class="rating">
+                    <input type="radio" id="resolution-1" name="resolution" value="1"><label for="resolution-1">1</label>
+                    <input type="radio" id="resolution-2" name="resolution" value="2"><label for="resolution-2">2</label>
+                    <input type="radio" id="resolution-3" name="resolution" value="3"><label for="resolution-3">3</label>
+                    <input type="radio" id="resolution-4" name="resolution" value="4"><label for="resolution-4">4</label>
+                    <input type="radio" id="resolution-5" name="resolution" value="5"><label for="resolution-5">5</label>
+                </div>
+            </div>
+
+
+            <div class="question">
+                <label>How knowledgeable was the representative who assisted you?</label>
+                <div class="rating">
+                    <input type="radio" id="knowledge-1" name="knowledge" value="1"><label for="knowledge-1">1</label>
+                    <input type="radio" id="knowledge-2" name="knowledge" value="2"><label for="knowledge-2">2</label>
+                    <input type="radio" id="knowledge-3" name="knowledge" value="3"><label for="knowledge-3">3</label>
+                    <input type="radio" id="knowledge-4" name="knowledge" value="4"><label for="knowledge-4">4</label>
+                    <input type="radio" id="knowledge-5" name="knowledge" value="5"><label for="knowledge-5">5</label>
+                </div>
+            </div>
+
+
+            <div class="question">
+                <label>How easy was it to get help when you needed it?</label>
+                <div class="rating">
+                    <input type="radio" id="help-1" name="help" value="1"><label for="help-1">1</label>
+                    <input type="radio" id="help-2" name="help" value="2"><label for="help-2">2</label>
+                    <input type="radio" id="help-3" name="help" value="3"><label for="help-3">3</label>
+                    <input type="radio" id="help-4" name="help" value="4"><label for="help-4">4</label>
+                    <input type="radio" id="help-5" name="help" value="5"><label for="help-5">5</label>
+                </div>
+            </div>
+
+
+            <!-- In-Store / Online Experience -->
+            <div class="question">
+                <label>If you visited a T-Mobile store recently, how satisfied were you with your experience?</label>
+                <div class="rating">
+                    <input type="radio" id="store-1" name="store" value="1"><label for="store-1">1</label>
+                    <input type="radio" id="store-2" name="store" value="2"><label for="store-2">2</label>
+                    <input type="radio" id="store-3" name="store" value="3"><label for="store-3">3</label>
+                    <input type="radio" id="store-4" name="store" value="4"><label for="store-4">4</label>
+                    <input type="radio" id="store-5" name="store" value="5"><label for="store-5">5</label>
+                </div>
+            </div>
+
+
+            <div class="question">
+                <label>How satisfied are you with the T-Mobile app and website?</label>
+                <div class="rating">
+                    <input type="radio" id="app-1" name="app" value="1"><label for="app-1">1</label>
+                    <input type="radio" id="app-2" name="app" value="2"><label for="app-2">2</label>
+                    <input type="radio" id="app-3" name="app" value="3"><label for="app-3">3</label>
+                    <input type="radio" id="app-4" name="app" value="4"><label for="app-4">4</label>
+                    <input type="radio" id="app-5" name="app" value="5"><label for="app-5">5</label>
+                </div>
+            </div>
+
+
+            <div class="question">
+                <label>Were you able to complete your task without difficulty?</label>
+                <div class="yesno">
+                    <input type="radio" id="task-yes" name="task" value="yes"><label for="task-yes">Yes</label>
+                    <input type="radio" id="task-no" name="task" value="no"><label for="task-no">No</label>
+                </div>
+            </div>
+
+
+            <!-- Expectations & Loyalty -->
+            <div class="question">
+                <label>How well does T-Mobile compare to your expectations?</label>
+                <div class="rating">
+                    <input type="radio" id="expect-1" name="expect" value="1"><label for="expect-1">Below expectations</label>
+                    <input type="radio" id="expect-2" name="expect" value="2"><label for="expect-2">Meets some expectations</label>
+                    <input type="radio" id="expect-3" name="expect" value="3"><label for="expect-3">Meets expectations</label>
+                    <input type="radio" id="expect-4" name="expect" value="4"><label for="expect-4">Exceeds expectations</label>
+                    <input type="radio" id="expect-5" name="expect" value="5"><label for="expect-5">Far exceeds expectations</label>
+                </div>
+            </div>
+
+
+            <div class="question">
+                <label>How likely are you to stay with T-Mobile for another year?</label>
+                <div class="rating">
+                    <input type="radio" id="stay-1" name="stay" value="1"><label for="stay-1">1</label>
+                    <input type="radio" id="stay-2" name="stay" value="2"><label for="stay-2">2</label>
+                    <input type="radio" id="stay-3" name="stay" value="3"><label for="stay-3">3</label>
+                    <input type="radio" id="stay-4" name="stay" value="4"><label for="stay-4">4</label>
+                    <input type="radio" id="stay-5" name="stay" value="5"><label for="stay-5">5</label>
+                </div>
+            </div>
+
+
+            <div class="question">
+                <label>What is the most important reason you continue using T-Mobile?</label>
+                <textarea></textarea>
+            </div>
+
+
+            <!-- Open Ended Feedback -->
+            <div class="question">
+                <label>What is one thing T-Mobile could do to improve your experience?</label>
+                <textarea></textarea>
+            </div>
+
+            <div class="question">
+                <label>What do you like most about T-Mobile?</label>
+                <textarea></textarea>
+            </div>
+
+                        <button type="submit">Submit</button>
+        </form>
+                <pre id="result" style="background:#f4f4f4;padding:10px;border-radius:6px;white-space:pre-wrap;margin-top:20px"></pre>
+    </div>
+        <script>
+        (function(){
+            const form = document.getElementById('survey-form');
+            const resultEl = document.getElementById('result');
+            function getRadioValue(name){
+                const el = form.querySelector(`input[name="${name}"]:checked`);
+                return el ? el.value : undefined;
+            }
+            form.addEventListener('submit', async (e)=>{
+                e.preventDefault();
+                const payload = {
+                    channel: 'web',
+                    answers: {
+                        overall: getRadioValue('overall') && Number(getRadioValue('overall')),
+                        recommend: getRadioValue('recommend') && Number(getRadioValue('recommend')),
+                        needs: getRadioValue('needs') && Number(getRadioValue('needs')),
+                        reliability: getRadioValue('reliability') && Number(getRadioValue('reliability')),
+                        speed: getRadioValue('speed') && Number(getRadioValue('speed')),
+                        drops: getRadioValue('drops') && Number(getRadioValue('drops')),
+                        value: getRadioValue('value') && Number(getRadioValue('value')),
+                        bill: getRadioValue('bill') && Number(getRadioValue('bill')),
+                        charges: (getRadioValue('charges') ? { value: getRadioValue('charges'), note: form.querySelector('textarea[placeholder="Optional explanation..."]').value.trim() } : undefined),
+                        resolution: getRadioValue('resolution') && Number(getRadioValue('resolution')),
+                        knowledge: getRadioValue('knowledge') && Number(getRadioValue('knowledge')),
+                        help: getRadioValue('help') && Number(getRadioValue('help')),
+                        store: getRadioValue('store') && Number(getRadioValue('store')),
+                        app: getRadioValue('app') && Number(getRadioValue('app')),
+                        task: getRadioValue('task'),
+                        expect: getRadioValue('expect') && Number(getRadioValue('expect')),
+                        stay: getRadioValue('stay') && Number(getRadioValue('stay')),
+                        reason_continue: (form.querySelectorAll('textarea')[1]?.value || '').trim(),
+                        improve: (form.querySelectorAll('textarea')[2]?.value || '').trim(),
+                        like_most: (form.querySelectorAll('textarea')[3]?.value || '').trim()
+                    }
+                };
+                // Remove undefined entries for cleanliness
+                Object.keys(payload.answers).forEach(k => {
+                    if (payload.answers[k] === undefined || payload.answers[k] === '') delete payload.answers[k];
+                });
+                try {
+                    const res = await fetch('http://localhost:4000/survey', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    resultEl.textContent = 'Submitted:\n' + JSON.stringify(data, null, 2);
+                } catch(err){
+                    resultEl.textContent = 'Error submitting survey: ' + err.message;
+                }
+            });
+        })();
+        </script>
+</body>
+</html>
+
+

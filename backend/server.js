@@ -10,6 +10,15 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
+// Minimal CORS for local HTML testing (file:// or different origin)
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 // Simple REST to insert survey
 // Accept full survey with arbitrary answers. Payload shape:
 // {
