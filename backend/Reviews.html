@@ -116,16 +116,16 @@
         .btn:disabled{opacity:.6;cursor:not-allowed;box-shadow:none}
         .note{color:#666;font-size:13px}
 
-        /* Aurora scene shown after submit */
+        /* Thank-you graphic shown after submit */
         .thankyou{display:none;margin-top:20px;}
         .aurora-scene{
             position:relative;
-            height:54vh;
             border-radius:16px;
             overflow:hidden;
-            background: radial-gradient(1200px 400px at 50% 100%, #110415 0%, #0b0310 40%, #05020a 70%, #020108 100%);
-            box-shadow: 0 20px 60px rgba(0,0,0,.25) inset;
+            background: none;
+            box-shadow: 0 6px 26px rgba(0,0,0,.08);
         }
+        .aurora-scene img{width:100%;height:auto;display:block}
         /* Stars in sky */
         .sky-stars::before{
             content:"";
@@ -252,49 +252,9 @@
 
             <div class="thankyou" id="thankYou">
                 <div class="headline">Thanks for your feedback!</div>
-                <div class="aurora-scene sky-stars">
-                    <div class="ribbon r1"></div>
-                    <div class="ribbon r2"></div>
-                    <div class="ribbon r3"></div>
-                    <div class="horizon"></div>
-
-                    <div class="person" aria-hidden="true">
-                        <!-- Simple original silhouette looking up -->
-                        <svg viewBox="0 0 200 360">
-                            <defs>
-                                <linearGradient id="silGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="#0b0b14"/>
-                                    <stop offset="100%" stop-color="#1a1a24"/>
-                                </linearGradient>
-                            </defs>
-                            <!-- Shadow -->
-                            <ellipse cx="100" cy="340" rx="58" ry="12" fill="rgba(0,0,0,.55)"/>
-                            <!-- Body -->
-                            <g fill="url(#silGrad)" stroke="rgba(0,0,0,.2)" stroke-width="2">
-                                <!-- Head -->
-                                <circle cx="120" cy="70" r="28"/>
-                                <!-- Neck -->
-                                <rect x="112" y="92" width="16" height="18" rx="6"/>
-                                <!-- Torso (slightly leaning) -->
-                                <rect x="80" y="110" width="60" height="86" rx="16" transform="rotate(-8 110 153)"/>
-                                <!-- Left arm -->
-                                <rect x="55" y="120" width="18" height="74" rx="10" transform="rotate(-22 64 157)"/>
-                                <!-- Right arm pointing up -->
-                                <rect x="135" y="120" width="18" height="96" rx="10" transform="rotate(335 144 168)"/>
-                                <!-- Hips -->
-                                <rect x="86" y="192" width="48" height="30" rx="10"/>
-                                <!-- Left leg -->
-                                <rect x="82" y="220" width="22" height="96" rx="12" transform="rotate(4 93 268)"/>
-                                <!-- Right leg -->
-                                <rect x="114" y="222" width="22" height="98" rx="12" transform="rotate(-6 125 271)"/>
-                                <!-- Shoes -->
-                                <rect x="76" y="312" width="36" height="10" rx="6"/>
-                                <rect x="110" y="314" width="38" height="10" rx="6"/>
-                            </g>
-                        </svg>
-                    </div>
+                <div class="aurora-scene">
+                    <img src="new.png" alt="Thank you graphic" />
                 </div>
-                <p class="sub">A pink and white aurora lights up the sky.</p>
                 <div class="actions">
                     <button class="btn" id="rateAgain">Rate again</button>
                     <a class="link" href="#" id="viewStay">Stay on this page</a>
