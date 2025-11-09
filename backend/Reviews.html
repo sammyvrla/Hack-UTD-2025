@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>T‑Mobile Reviews</title>
+    <style>
+        :root{
+            --tm-magenta:#E20074;
+            --tm-magenta-2:#ff3ba7;
+            --tm-bg:#ffffff;
+            --tm-dark:#0d0d12;
+            --star-size:38px;
+        }
+        html,body{
+            margin:0;
+            padding:0;
+            background:var(--tm-bg);
+            color:#222;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        }
+        .wrap{
+            max-width:920px;
+            margin:24px auto 56px;
+            padding:0 16px;
+        }
+        .brand{
+            display:flex;
+            align-items:center;
+            gap:12px;
+            margin-bottom:20px;
+        }
+        .brand-badge{
+            width:40px;height:40px;border-radius:10px;background:var(--tm-magenta);
+            display:grid;place-items:center;color:#fff;font-weight:800;
+            letter-spacing:.5px;box-shadow:0 6px 18px rgba(226,0,116,.35);
+        }
+        h1{margin:0;font-size:26px;}
+        .card{
+            border:1px solid #eee;
+            border-radius:14px;
+/* To raise the seeded average to ~4.0, update seedReviews() weights in the <script>:
+   const weights = [
+       {rating:5, w:40},
+       {rating:4, w:34},
+       {rating:3, w:15},
+       {rating:2, w:7},
+       {rating:1, w:4}
+   ];
+   This yields ~3.99 average. If data already exists, clear IndexedDB "tmobileReviewsDB"
+   or bump DB_VER to 2 to reseed.
+*/
+            padding:18px;
+            box-shadow:0 6px 26px rgba(0,0,0,.05);
+            background:#fff;
+        }
+
+        /* Average bar */
+        .avg{
+            display:flex;align-items:center;justify-content:space-between;gap:16px;
+            flex-wrap:wrap;margin-bottom:16px;
+        }
+        .avg-num{
+            font-size:40px;font-weight:800;color:var(--tm-magenta);
+            min-width:120px;
+        }
+        .count{
+            color:#666;font-size:14px;
+        }
+        .stars-display{
+            position:relative;
+            display:inline-block;
+            font-size:0;
+            width: calc(var(--star-size) * 5 + 6px * 4);
+            height: var(--star-size);
+        }
+        .stars-outer, .stars-inner{
+            position:absolute;top:0;left:0;height:100%;overflow:hidden;white-space:nowrap;
+        }
+        .star{
+            width:var(--star-size);height:var(--star-size);display:inline-block;margin-right:6px;
+            background: none;
+            -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M316.6 18c-7.9-16-31.3-16-39.2 0l-58 117.6L92.7 152c-17.6 2.6-24.6 24.2-11.9 36.6l94 91.6-22.2 129.5c-3 17.5 15.4 30.7 31.1 22.5L288 372.6l115.3 60.6c15.7 8.3 34.1-5 31.1-22.5l-22.2-129.5 94-91.6c12.7-12.4 5.7-34-11.9-36.6l-126-16.4-58-117.6z"/></svg>') center / contain no-repeat;
+                            mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M316.6 18c-7.9-16-31.3-16-39.2 0l-58 117.6L92.7 152c-17.6 2.6-24.6 24.2-11.9 36.6l94 91.6-22.2 129.5c-3 17.5 15.4 30.7 31.1 22.5L288 372.6l115.3 60.6c15.7 8.3 34.1-5 31.1-22.5l-22.2-129.5 94-91.6c12.7-12.4 5.7-34-11.9-36.6l-126-16.4-58-117.6z"/></svg>') center / contain no-repeat;
+            background-color:#ececec;
+        }
+        .stars-inner .star{ background-color:var(--tm-magenta); }
+
+        /* Rating input stars */
+        .rate{
+            display:flex;flex-direction:column;gap:12px;margin-top:8px;
+        }
+        .rate .legend{font-weight:600;}
+        .stars-input{
+            display:flex;flex-direction:row-reverse;justify-content:flex-end;gap:8px;
+        }
+        .stars-input input{ display:none; }
+        .stars-input label{
+            cursor:pointer;width:var(--star-size);height:var(--star-size);
+            -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M316.6 18c-7.9-16-31.3-16-39.2 0l-58 117.6L92.7 152c-17.6 2.6-24.6 24.2-11.9 36.6l94 91.6-22.2 129.5c-3 17.5 15.4 30.7 31.1 22.5L288 372.6l115.3 60.6c15.7 8.3 34.1-5 31.1-22.5l-22.2-129.5 94-91.6c12.7-12.4 5.7-34-11.9-36.6l-126-16.4-58-117.6z"/></svg>') center / contain no-repeat;
+                            mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M316.6 18c-7.9-16-31.3-16-39.2 0l-58 117.6L92.7 152c-17.6 2.6-24.6 24.2-11.9 36.6l94 91.6-22.2 129.5c-3 17.5 15.4 30.7 31.1 22.5L288 372.6l115.3 60.6c15.7 8.3 34.1-5 31.1-22.5l-22.2-129.5 94-91.6c12.7-12.4 5.7-34-11.9-36.6l-126-16.4-58-117.6z"/></svg>') center / contain no-repeat;
+            background:#ddd;transition:all .15s ease;
+        }
+        .stars-input label:hover,
+        .stars-input label:hover ~ label{ background:var(--tm-magenta-2); }
+        .stars-input input:checked ~ label{ background:var(--tm-magenta); }
+        .rate-actions{
+            display:flex;gap:12px;align-items:center;margin-top:8px;
+        }
+        .btn{
+            background:var(--tm-magenta);
+            color:#fff;border:none;border-radius:10px;
+            padding:10px 16px;font-weight:700;cursor:pointer;
+            box-shadow:0 8px 22px rgba(226,0,116,.35);
+        }
+        .btn:disabled{opacity:.6;cursor:not-allowed;box-shadow:none}
+        .note{color:#666;font-size:13px}
+
+        /* Aurora scene shown after submit */
+        .thankyou{display:none;margin-top:20px;}
+        .aurora-scene{
+            position:relative;
+            height:54vh;
+            border-radius:16px;
+            overflow:hidden;
+            background: radial-gradient(1200px 400px at 50% 100%, #110415 0%, #0b0310 40%, #05020a 70%, #020108 100%);
+            box-shadow: 0 20px 60px rgba(0,0,0,.25) inset;
+        }
+        /* Stars in sky */
+        .sky-stars::before{
+            content:"";
+            position:absolute;inset:0;
+            background:
+                radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,.9) 0 40%, transparent 45%) ,
+                radial-gradient(2px 2px at 30% 15%, rgba(255,255,255,.8) 0 40%, transparent 45%) ,
+                radial-gradient(2px 2px at 70% 25%, rgba(255,255,255,.85) 0 40%, transparent 45%) ,
+                radial-gradient(1.5px 1.5px at 80% 10%, rgba(255,255,255,.8) 0 40%, transparent 45%) ,
+                radial-gradient(1.5px 1.5px at 20% 5%, rgba(255,255,255,.75) 0 40%, transparent 45%) ,
+                radial-gradient(2px 2px at 60% 35%, rgba(255,255,255,.9) 0 40%, transparent 45%),
+                radial-gradient(1.5px 1.5px at 50% 12%, rgba(255,255,255,.8) 0 40%, transparent 45%);
+            opacity:.7;
+        }
+        /* Animated aurora ribbons */
+        .ribbon{
+            position:absolute;left:-10%;right:-10%;height:60%;
+            filter: blur(22px);
+            opacity:.9;
+            mix-blend-mode: screen;
+            background: conic-gradient(from 180deg at 50% 50%, rgba(255,255,255,.0), rgba(255,255,255,.7), rgba(226,0,116,.85), rgba(255,59,167,.75), rgba(255,255,255,.0));
+            transform-origin: 50% 100%;
+            animation: wave 9s ease-in-out infinite alternate;
+        }
+        .ribbon.r2{
+            top:5%; height:70%;
+            filter: blur(26px);
+            opacity:.7;
+            animation-duration: 12s;
+            animation-delay: -2s;
+            transform: scaleX(-1);
+        }
+        .ribbon.r3{
+            top:-10%; height:85%;
+            filter: blur(32px);
+            opacity:.6;
+            animation-duration: 14s;
+            animation-delay: -4s;
+        }
+        @keyframes wave{
+            0%{ transform: perspective(600px) rotateX(25deg) translateY(10%) skewX(-8deg); }
+            50%{ transform: perspective(600px) rotateX(20deg) translateY(0%) skewX(6deg); }
+            100%{ transform: perspective(600px) rotateX(18deg) translateY(-8%) skewX(-12deg); }
+        }
+        /* Horizon glow */
+        .horizon{
+            position:absolute;left:0;right:0;bottom:0;height:30%;
+            background: radial-gradient(60% 100% at 50% 120%, rgba(226,0,116,.45), rgba(255,255,255,.15) 40%, transparent 70%);
+            filter: blur(10px);
+            opacity:.8;
+        }
+        /* Person silhouette */
+        .person{
+            position:absolute;bottom:12px;left:50%;transform:translateX(-50%) rotate(-6deg);
+            width:120px;height:220px;
+        }
+        .person svg{width:100%;height:100%}
+        .headline{
+            text-align:center;margin:14px 8px 8px;font-weight:800;color:var(--tm-magenta);
+            font-size:22px;
+        }
+        .sub{ text-align:center;color:#fff;opacity:.9;margin-top:0; }
+
+        /* Footer actions */
+        .actions{
+            margin-top:12px;display:flex;justify-content:flex-start;gap:10px;align-items:center;
+        }
+        .link{
+            color:var(--tm-magenta);text-decoration:none;font-weight:700;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="brand">
+            <div class="brand-badge">T</div>
+            <h1>T‑Mobile Satisfaction Reviews</h1>
+        </div>
+
+        <div class="card" id="panel">
+            <div class="avg">
+                <div>
+                    <div class="avg-num" id="avgNum">—</div>
+                    <div class="count" id="count">Counting reviews…</div>
+                </div>
+                <div>
+                    <div class="stars-display" aria-hidden="true">
+                        <div class="stars-outer" id="avgStarsOuter">
+                            <span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span>
+                        </div>
+                        <div class="stars-inner" id="avgStarsInner" style="width:0%">
+                            <span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span><span class="star"></span>
+                        </div>
+                    </div>
+                    <div class="count" id="avgLabel" style="margin-top:6px">Average rating</div>
+                </div>
+            </div>
+
+            <hr style="border:none;border-top:1px solid #f0f0f0;margin:8px 0 16px" />
+
+            <form id="rateForm" class="rate" autocomplete="off">
+                <div class="legend">How satisfied are you with T‑Mobile?</div>
+                <div class="stars-input" role="radiogroup" aria-label="Rate 1 to 5">
+                    <input type="radio" name="rating" id="rate5" value="5" aria-label="5 - Very satisfied" />
+                    <label for="rate5" title="5 - Very satisfied"></label>
+
+                    <input type="radio" name="rating" id="rate4" value="4" aria-label="4 - Satisfied" />
+                    <label for="rate4" title="4 - Satisfied"></label>
+
+                    <input type="radio" name="rating" id="rate3" value="3" aria-label="3 - Neutral" />
+                    <label for="rate3" title="3 - Neutral"></label>
+
+                    <input type="radio" name="rating" id="rate2" value="2" aria-label="2 - Unsatisfied" />
+                    <label for="rate2" title="2 - Unsatisfied"></label>
+
+                    <input type="radio" name="rating" id="rate1" value="1" aria-label="1 - Not satisfied" />
+                    <label for="rate1" title="1 - Not satisfied"></label>
+                </div>
+                <div class="rate-actions">
+                    <button type="submit" class="btn" id="submitBtn" disabled>Submit rating</button>
+                    <span class="note">1 = Not satisfied, 5 = Very satisfied</span>
+                </div>
+            </form>
+
+            <div class="thankyou" id="thankYou">
+                <div class="headline">Thanks for your feedback!</div>
+                <div class="aurora-scene sky-stars">
+                    <div class="ribbon r1"></div>
+                    <div class="ribbon r2"></div>
+                    <div class="ribbon r3"></div>
+                    <div class="horizon"></div>
+
+                    <div class="person" aria-hidden="true">
+                        <!-- Simple original silhouette looking up -->
+                        <svg viewBox="0 0 200 360">
+                            <defs>
+                                <linearGradient id="silGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#0b0b14"/>
+                                    <stop offset="100%" stop-color="#1a1a24"/>
+                                </linearGradient>
+                            </defs>
+                            <!-- Shadow -->
+                            <ellipse cx="100" cy="340" rx="58" ry="12" fill="rgba(0,0,0,.55)"/>
+                            <!-- Body -->
+                            <g fill="url(#silGrad)" stroke="rgba(0,0,0,.2)" stroke-width="2">
+                                <!-- Head -->
+                                <circle cx="120" cy="70" r="28"/>
+                                <!-- Neck -->
+                                <rect x="112" y="92" width="16" height="18" rx="6"/>
+                                <!-- Torso (slightly leaning) -->
+                                <rect x="80" y="110" width="60" height="86" rx="16" transform="rotate(-8 110 153)"/>
+                                <!-- Left arm -->
+                                <rect x="55" y="120" width="18" height="74" rx="10" transform="rotate(-22 64 157)"/>
+                                <!-- Right arm pointing up -->
+                                <rect x="135" y="120" width="18" height="96" rx="10" transform="rotate(335 144 168)"/>
+                                <!-- Hips -->
+                                <rect x="86" y="192" width="48" height="30" rx="10"/>
+                                <!-- Left leg -->
+                                <rect x="82" y="220" width="22" height="96" rx="12" transform="rotate(4 93 268)"/>
+                                <!-- Right leg -->
+                                <rect x="114" y="222" width="22" height="98" rx="12" transform="rotate(-6 125 271)"/>
+                                <!-- Shoes -->
+                                <rect x="76" y="312" width="36" height="10" rx="6"/>
+                                <rect x="110" y="314" width="38" height="10" rx="6"/>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+                <p class="sub">A pink and white aurora lights up the sky.</p>
+                <div class="actions">
+                    <button class="btn" id="rateAgain">Rate again</button>
+                    <a class="link" href="#" id="viewStay">Stay on this page</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // IndexedDB helpers
+        const DB_NAME = 'tmobileReviewsDB';
+        const DB_VER = 1;
+        const STORE = 'reviews';
+
+        function openDB(){
+            return new Promise((resolve,reject)=>{
+                const req = indexedDB.open(DB_NAME, DB_VER);
+                req.onupgradeneeded = e=>{
+                    const db = e.target.result;
+                    if(!db.objectStoreNames.contains(STORE)){
+                        const store = db.createObjectStore(STORE, { keyPath:'id', autoIncrement:true });
+                        store.createIndex('rating','rating',{unique:false});
+                        store.createIndex('createdAt','createdAt',{unique:false});
+                    }
+                };
+                req.onsuccess = ()=>resolve(req.result);
+                req.onerror = ()=>reject(req.error);
+            });
+        }
+
+        function tx(db, mode='readonly'){
+            return db.transaction(STORE, mode).objectStore(STORE);
+        }
+
+        function countRecords(db){
+            return new Promise((resolve,reject)=>{
+                const r = tx(db).count();
+                r.onsuccess = ()=>resolve(r.result||0);
+                r.onerror = ()=>reject(r.error);
+            });
+        }
+
+        function addReview(db, rating){
+            return new Promise((resolve,reject)=>{
+                const r = tx(db,'readwrite').add({
+                    rating: Number(rating),
+                    createdAt: Date.now()
+                });
+                r.onsuccess = ()=>resolve(r.result);
+                r.onerror = ()=>reject(r.error);
+            });
+        }
+
+        function getAllReviews(db){
+            return new Promise((resolve,reject)=>{
+                const req = tx(db).getAll();
+                req.onsuccess = ()=>resolve(req.result||[]);
+                req.onerror = ()=>reject(req.error);
+            });
+        }
+
+        function seedReviews(db, n=100){
+            const weights = [
+                {rating:5, w:32}, // 32%
+                {rating:4, w:26}, // 26%
+                {rating:3, w:20}, // 20%
+                {rating:2, w:13}, // 13%
+                {rating:1, w:9}   // 9%
+            ];
+            const totalW = weights.reduce((a,b)=>a+b.w,0);
+            const draw = ()=>{
+                let r = Math.random()*totalW, acc=0;
+                for(const it of weights){ acc+=it.w; if(r<=acc) return it.rating; }
+                return 3;
+            };
+            return new Promise((resolve,reject)=>{
+                const store = tx(db,'readwrite');
+                for(let i=0;i<n;i++){
+                    store.add({ rating: draw(), createdAt: Date.now() - (n-i)*1000 });
+                }
+                store.transaction.oncomplete = ()=>resolve(true);
+                store.transaction.onerror = ()=>reject(store.transaction.error);
+            });
+        }
+
+        function calcAverage(list){
+            if(!list.length) return 0;
+            const sum = list.reduce((a,b)=>a + Number(b.rating||0), 0);
+            return sum / list.length;
+        }
+
+        // UI
+        const avgNumEl = document.getElementById('avgNum');
+        const countEl = document.getElementById('count');
+        const avgStarsInner = document.getElementById('avgStarsInner');
+        const avgLabel = document.getElementById('avgLabel');
+        const rateForm = document.getElementById('rateForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const thankYou = document.getElementById('thankYou');
+        const rateAgain = document.getElementById('rateAgain');
+
+        let DB;
+
+        async function refreshStats(){
+            const list = await getAllReviews(DB);
+            const avg = calcAverage(list);
+            const rounded = Math.round(avg * 100) / 100;
+            const pct = Math.max(0, Math.min(100, rounded / 5 * 100));
+            avgNumEl.textContent = rounded ? rounded.toFixed(2) + " / 5" : "—";
+            countEl.textContent = list.length + " total reviews";
+            avgLabel.textContent = "Average rating (" + (rounded ? rounded.toFixed(2) : "—") + " of 5)";
+            avgStarsInner.style.width = pct + "%";
+        }
+
+        function selectedRating(){
+            const fd = new FormData(rateForm);
+            const v = fd.get('rating');
+            return v ? Number(v) : null;
+        }
+
+        function setSubmitEnabled(){
+            submitBtn.disabled = !selectedRating();
+        }
+
+        function showThanks(){
+            rateForm.style.display = 'none';
+            thankYou.style.display = 'block';
+            document.querySelector('.aurora-scene').scrollIntoView({behavior:'smooth', block:'center'});
+        }
+        function showForm(){
+            rateForm.reset();
+            setSubmitEnabled();
+            thankYou.style.display = 'none';
+            rateForm.style.display = 'block';
+        }
+
+        // Init
+        (async function init(){
+            try{
+                DB = await openDB();
+                const existing = await countRecords(DB);
+                if(existing === 0){
+                    await seedReviews(DB, 100);
+                }
+                await refreshStats();
+            }catch(err){
+                console.error(err);
+                avgNumEl.textContent = "Error";
+                countEl.textContent = "Unable to load database";
+            }
+        })();
+
+        // Events
+        rateForm.addEventListener('change', setSubmitEnabled);
+        rateForm.addEventListener('submit', async (e)=>{
+            e.preventDefault();
+            const rating = selectedRating();
+            if(!rating) return;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Saving…";
+            try{
+                await addReview(DB, rating);
+                await refreshStats();
+                showThanks();
+            }catch(err){
+                alert("Failed to save rating.");
+                console.error(err);
+            }finally{
+                submitBtn.textContent = "Submit rating";
+                setSubmitEnabled();
+            }
+        });
+
+        rateAgain.addEventListener('click', ()=>{
+            showForm();
+            window.scrollTo({top:0, behavior:'smooth'});
+        });
+        document.getElementById('viewStay').addEventListener('click', (e)=>{
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
