@@ -38,6 +38,32 @@ function expandTo150(list) {
 
 const AREAS = expandTo150(BASE_LOCATIONS);
 
+// Deterministic segmenting to widen variance without changing Python calculator.
+// Segments influence generated metric quality so final index spreads out.
+const QUALITY_SEGMENTS = {
+  premium: { latencyShift: -15, packetLossShift: -0.25, retentionBoost: 12, brandBoost: 15 },
+  average: { latencyShift: 0, packetLossShift: 0, retentionBoost: 0, brandBoost: 0 },
+  challenged: { latencyShift: 30, packetLossShift: 0.7, retentionBoost: -25, brandBoost: -18 }
+};
+
+function hashStr(str){
+  let h = 0;
+  for (let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function pickSegment(area){
+  const h = hashStr(area);
+  const r = h % 100;
+  // ~25% premium, 55% average, 20% challenged
+  if (r < 25) return 'premium';
+  if (r < 80) return 'average';
+  return 'challenged';
+}
+
+const VARIANCE_MULT = parseFloat(process.env.GEN_VARIANCE_MULT || '1');
+const OUTLIER_RATE = parseFloat(process.env.GEN_OUTLIER_RATE || '0.05'); // chance of a temporary outage/degraded event per row
+
 function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
 function rnd(norm=0, spread=1) { // gaussian-ish using Box–Muller
   let u = 0, v = 0;
@@ -49,48 +75,89 @@ function rnd(norm=0, spread=1) { // gaussian-ish using Box–Muller
 
 function mkNow(){ return new Date(); }
 
-function genRow(area){
-  // Network raw
-  const latencyMs = clamp(Math.round(rnd(55, 20)), 15, 180);
-  const packetLoss = clamp(Math.abs(rnd(0.4, 0.35)), 0, 3.5); // %
-  const serviceOk = Math.random() < 0.97 ? 1 : 0; // ~3% outages
-  const networkLoad = clamp(Math.round(rnd(60, 20)), 10, 99);
-  const sessions = clamp(Math.round(rnd(8000, 6000)), 500, 60000);
+function genRow(area) {
+  // --- NETWORK ---
+  // Latency: wider spread (bad = high)
+  const latencyMs = clamp(Math.round(rnd(70, 35)), 10, 250);
+  // Packet loss: broader range
+  const packetLoss = clamp(Math.abs(rnd(1.0, 0.8)), 0, 5.0); // %
+  // Random 5–10% outage rate overall
+  const serviceOk = Math.random() < 0.92 ? 1 : 0;
+  const networkLoad = clamp(Math.round(rnd(60, 25)), 5, 100);
+  const sessions = clamp(Math.round(rnd(8000, 6000)), 100, 60000);
 
-  // Scores (0-100 higher is better)
+  // --- SCORING (0–100, higher = better) ---
   const latencyScore = clamp(100 - ((latencyMs - 20) * 0.7), 0, 100);
-  const packetLossScore = clamp(100 - (packetLoss * 20), 0, 100);
+  const packetLossScore = clamp(100 - (packetLoss * 25), 0, 100);
 
-  // Sentiment 1-5
-  const surveyScore = clamp(Math.round((rnd(3.9, 0.6))*100)/100, 1, 5);
-  const reviewScore = clamp(Math.round((rnd(3.8, 0.5))*100)/100, 1, 5);
+  // --- SENTIMENT (1–5 scale) ---
+  const surveyScore = clamp(Math.round((rnd(3.2, 1.0)) * 100) / 100, 1, 5);
+  const reviewScore = clamp(Math.round((rnd(3.0, 1.1)) * 100) / 100, 1, 5);
 
-  // Engagement
-  const retentionScore = clamp(Math.round((latencyScore*0.3 + packetLossScore*0.2 + surveyScore*12 + reviewScore*8 + (serviceOk?10:-20)) ), 0, 100);
-  const remainMonths = clamp(Math.round((retentionScore/100)*36*10)/10, 1, 48);
+  // --- ENGAGEMENT ---
+  // More volatile retention score; bad sentiment or outages pull it down
+  const retentionScore = clamp(
+    Math.round(
+      latencyScore * 0.25 +
+      packetLossScore * 0.15 +
+      surveyScore * 10 +
+      reviewScore * 8 +
+      (serviceOk ? 8 : -25) +
+      rnd(0, 15) // day-to-day randomness
+    ),
+    0, 100
+  );
+  const remainMonths = clamp(Math.round((retentionScore / 100) * 36 * 10) / 10, 1, 48);
 
-  // Market context
-  const avgIncome = clamp(Math.round(rnd(85000, 25000)), 35000, 180000);
-  const sales = clamp(Math.round(rnd(120000, 60000)), 10000, 350000);
-  const businessIndex = clamp(Math.round(((sales/avgIncome)*18 + retentionScore*0.3)), 0, 100);
+  // --- MARKET CONTEXT ---
+  const avgIncome = clamp(Math.round(rnd(80000, 35000)), 30000, 200000);
+  const sales = clamp(Math.round(rnd(110000, 90000)), 5000, 400000);
+  const businessIndex = clamp(Math.round(((sales / avgIncome) * 20 + retentionScore * 0.3)), 0, 100);
 
-  // Brand & social
-  const brandMarketScore = clamp(Math.round((rnd(68, 12))), 20, 100);
-  const adReach = clamp(Math.round(rnd(180000, 75000)), 10000, 1000000);
-  const shares = clamp(Math.round(rnd(120, 60)), 0, 1200);
-  const likes = clamp(Math.round(rnd(1400, 700)), 0, 15000);
-  const posts = clamp(Math.round(rnd(65, 25)), 0, 800);
-  const comments = clamp(Math.round(rnd(320, 140)), 0, 6000);
+  // --- BRAND & SOCIAL ---
+  const brandMarketScore = clamp(Math.round(rnd(55, 25)), 0, 100);
+  const adReach = clamp(Math.round(rnd(160000, 100000)), 5000, 1000000);
+  const shares = clamp(Math.round(rnd(150, 100)), 0, 1500);
+  const likes = clamp(Math.round(rnd(1500, 1000)), 0, 20000);
+  const posts = clamp(Math.round(rnd(70, 35)), 0, 1000);
+  const comments = clamp(Math.round(rnd(350, 220)), 0, 7000);
+
+  // --- OVERALL HAPPINESS (0–100) ---
+  // Weighted composite with randomness for natural variation
+  const overallHappiness = clamp(
+    latencyScore * 0.15 +
+    packetLossScore * 0.10 +
+    surveyScore * 12 +
+    reviewScore * 8 +
+    retentionScore * 0.25 +
+    brandMarketScore * 0.20 +
+    rnd(0, 30), // inject noise to allow poor/exceptional spikes
+  0, 100);
 
   return {
-    ts: mkNow(), market_id: area,
-    latencyMs, packetLoss, serviceOk, networkLoad, sessions,
-    latencyScore, packetLossScore,
-    surveyScore, reviewScore,
-    retentionScore, remainMonths,
-    avgIncome, sales, businessIndex,
-    brandMarketScore, adReach,
-    shares, likes, posts, comments
+    ts: mkNow(),
+    market_id: area,
+    latencyMs,
+    packetLoss,
+    serviceOk,
+    networkLoad,
+    sessions,
+    latencyScore,
+    packetLossScore,
+    surveyScore,
+    reviewScore,
+    retentionScore,
+    remainMonths,
+    avgIncome,
+    sales,
+    businessIndex,
+    brandMarketScore,
+    adReach,
+    shares,
+    likes,
+    posts,
+    comments,
+    overallHappiness
   };
 }
 
