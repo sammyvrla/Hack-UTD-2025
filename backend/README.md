@@ -46,7 +46,7 @@ node quick-check.js
 ```
 4. Post a survey to see data recorded:
 ```powershell
-curl -Method POST -Uri http://localhost:4000/survey -Body '{"customer_id":"abc123","nps_score":9,"sentiment_raw":2,"channel":"web","free_text":"Great service"}' -ContentType 'application/json'
+curl -Method POST -Uri http://localhost:4000/survey -Body '{"customer_id":"abc123","nps_score":9,"sentiment_raw":2,"channel":"web","answers":{"overall":5,"recommend":4}}' -ContentType 'application/json'
 ```
 5. Re-run `node quick-check.js` to confirm survey count changed.
 
