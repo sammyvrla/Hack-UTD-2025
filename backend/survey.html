@@ -321,7 +321,8 @@
                         drops: getRadioValue('drops') && Number(getRadioValue('drops')),
                         value: getRadioValue('value') && Number(getRadioValue('value')),
                         bill: getRadioValue('bill') && Number(getRadioValue('bill')),
-                        charges: (getRadioValue('charges') ? { value: getRadioValue('charges'), note: form.querySelector('textarea[placeholder="Optional explanation..."]').value.trim() } : undefined),
+                        // Short-answer fields removed: only capture yes/no value for charges
+                        charges: getRadioValue('charges'),
                         resolution: getRadioValue('resolution') && Number(getRadioValue('resolution')),
                         knowledge: getRadioValue('knowledge') && Number(getRadioValue('knowledge')),
                         help: getRadioValue('help') && Number(getRadioValue('help')),
@@ -330,9 +331,7 @@
                         task: getRadioValue('task'),
                         expect: getRadioValue('expect') && Number(getRadioValue('expect')),
                         stay: getRadioValue('stay') && Number(getRadioValue('stay')),
-                        reason_continue: (form.querySelectorAll('textarea')[1]?.value || '').trim(),
-                        improve: (form.querySelectorAll('textarea')[2]?.value || '').trim(),
-                        like_most: (form.querySelectorAll('textarea')[3]?.value || '').trim()
+                        // Removed short-answer questions
                     }
                 };
                 // Remove undefined entries for cleanliness

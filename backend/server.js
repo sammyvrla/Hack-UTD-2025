@@ -23,7 +23,6 @@ app.use((req, res, next) => {
 // Accept full survey with arbitrary answers. Payload shape:
 // {
 //   customer_id: 'abc', channel: 'web', sentiment_raw: 2, nps_score: 9,
-//   free_text: 'optional overall comment',
 //   answers: { overall: 5, recommend: 4, reliability: 3, charges: {value: 'yes', note: '...'}, open_improve: '...' }
 // }
 app.post('/survey', async (req, res) => {
@@ -33,7 +32,6 @@ app.post('/survey', async (req, res) => {
     channel,
     sentiment_raw,
     nps_score,
-    free_text,
     answers
   } = body;
 
@@ -59,10 +57,10 @@ app.post('/survey', async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO customer_surveys (customer_id, nps_score, sentiment_raw, channel, free_text, answers)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+      `INSERT INTO customer_surveys (customer_id, nps_score, sentiment_raw, channel, answers)
+       VALUES ($1, $2, $3, $4, $5::jsonb)
        RETURNING id, submitted_at`,
-      [customer_id || null, derivedNps || null, sentiment_raw || null, channel || null, free_text || null, jsonAnswers]
+      [customer_id || null, derivedNps || null, sentiment_raw || null, channel || null, jsonAnswers]
     );
     res.json({ ok: true, survey_id: rows[0].id, submitted_at: rows[0].submitted_at });
   } catch (e) {

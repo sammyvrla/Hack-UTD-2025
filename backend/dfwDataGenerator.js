@@ -138,6 +138,12 @@ async function tick(){
     ['ts','market_id','shares','likes','posts','comments'],
     rows.map(r=>({ ts:r.ts, market_id:r.market_id, shares:r.shares, likes:r.likes, posts:r.posts, comments:r.comments }))
   );
+
+  // Combined table for simplified analytics
+  await insertBatch('coverage_metrics',
+    ['ts','market_id','latency_score','packet_loss_score','outage_flag','survey_score','review_score','consumer_retention_score','likely_remain_months','avg_income_usd','sales_usd','business_index','brand_market_score','ad_reach','shares','likes','posts','comments'],
+    rows.map(r=>({ ts:r.ts, market_id:r.market_id, latency_score:r.latencyScore, packet_loss_score:r.packetLossScore, outage_flag:r.serviceOk, survey_score:r.surveyScore, review_score:r.reviewScore, consumer_retention_score:r.retentionScore, likely_remain_months:r.remainMonths, avg_income_usd:r.avgIncome, sales_usd:r.sales, business_index:r.businessIndex, brand_market_score:r.brandMarketScore, ad_reach:r.adReach, shares:r.shares, likes:r.likes, posts:r.posts, comments:r.comments }))
+  );
 }
 
 async function main(){

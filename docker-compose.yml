@@ -1,0 +1,81 @@
+version: "3.9"
+
+services:
+  timescale:
+    image: timescale/timescaledb:latest-pg14
+    container_name: timescale
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=happiness
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d happiness"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: api
+    environment:
+      - PGHOST=timescale
+      - PGPORT=5432
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
+      - PGDATABASE=happiness
+      - REDIS_URL=redis://redis:6379
+      - PORT=4000
+    depends_on:
+      timescale:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "4000:4000"
+    command: ["npm","start"]
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: worker
+    environment:
+      - PGHOST=timescale
+      - PGPORT=5432
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
+      - PGDATABASE=happiness
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      timescale:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: ["npm","run","worker"]
+
+  simulator:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: simulator
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_started
+    command: ["npm","run","simulate"]
+
+volumes:
+  pgdata:

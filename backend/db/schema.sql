@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS customer_surveys (
   channel TEXT,
   sentiment_raw INT,
   nps_score INT,
-  free_text TEXT,
   -- Flexible container for arbitrary survey answers (per-question values)
   answers JSONB DEFAULT '{}'::jsonb
 );
@@ -146,3 +145,31 @@ CREATE TABLE IF NOT EXISTS social_metrics (
 );
 SELECT create_hypertable('social_metrics','ts', if_not_exists => TRUE);
 CREATE INDEX IF NOT EXISTS idx_social_metrics_market_ts ON social_metrics (market_id, ts DESC);
+
+-- Combined coverage metrics (all-numeric fields as requested)
+CREATE TABLE IF NOT EXISTS coverage_metrics (
+  ts TIMESTAMPTZ NOT NULL,
+  market_id TEXT NOT NULL,
+  -- Network performance
+  latency_score NUMERIC(5,2),
+  packet_loss_score NUMERIC(5,2),
+  outage_flag SMALLINT,              -- 0 = outage, 1 = running smoothly
+  -- Consumer sentiment
+  survey_score NUMERIC(5,2),         -- 1-5
+  review_score NUMERIC(5,2),         -- 1-5
+  -- Behavioral Engagement & Market Context
+  consumer_retention_score NUMERIC(5,2), -- 0-100
+  likely_remain_months NUMERIC(6,2),
+  avg_income_usd NUMERIC(12,2),
+  sales_usd NUMERIC(12,2),
+  business_index NUMERIC(6,2),       -- 0-100
+  -- Brand & reach & social
+  brand_market_score NUMERIC(5,2),   -- 0-100
+  ad_reach NUMERIC(12,2),
+  shares INT,
+  likes INT,
+  posts INT,
+  comments INT
+);
+SELECT create_hypertable('coverage_metrics','ts', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_coverage_metrics_market_ts ON coverage_metrics (market_id, ts DESC);
