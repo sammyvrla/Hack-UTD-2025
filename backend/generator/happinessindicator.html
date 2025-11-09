@@ -73,7 +73,7 @@
           </table>
         </div>
         <footer>
-          <div class="small">Latest snapshot every minute. Sales are randomized 0–100 on each refresh.</div>
+          <div class="small">Latest snapshot every minute. Normalized sales update daily at midnight.</div>
         </footer>
       </div>
 
@@ -157,8 +157,7 @@ async function loadNetworkMetrics(){
     networkBody.innerHTML='';
     data.slice(0,500).forEach(r=>{
       let outage = r.outage_rate_pct<=1?r.outage_rate_pct*100:r.outage_rate_pct;
-      // Randomize sales between 0–100 (integer)
-      const normalizedSales = Math.floor(Math.random()*101);
+      const normalizedSales = (normalizedSalesData[r.tower_id]||0).toFixed(2);
       const tr=document.createElement('tr');
       tr.innerHTML=`
         <td><strong>${r.tower_id||r.market_id||'—'}</strong><div class="tiny">${r.location||''}</div></td>
