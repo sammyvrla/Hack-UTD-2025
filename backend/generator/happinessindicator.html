@@ -54,10 +54,9 @@
     </header>
 
     <div class="grid">
-      <!-- Left: Task-Manager-style table -->
       <div class="card">
         <h3 style="margin:0 0 10px 0">Network Performance — Towers</h3>
-        <div class="table-wrap" id="network-table-wrap">
+        <div class="table-wrap">
           <table id="network-table">
             <thead>
               <tr>
@@ -67,17 +66,17 @@
                 <th class="right">Outage Rate</th>
                 <th class="right">Load (%)</th>
                 <th class="right">Sessions</th>
+                <th class="right">Normalized Sales</th>
               </tr>
             </thead>
             <tbody id="network-body"></tbody>
           </table>
         </div>
         <footer>
-          <div class="small">Showing latest snapshot for each tower. Table refreshes every minute.</div>
+          <div class="small">Latest snapshot every minute. Normalized sales update daily at midnight.</div>
         </footer>
       </div>
 
-      <!-- Right: Happiness chart -->
       <div class="card">
         <h3 style="margin:0 0 10px 0">Overall Customer Happiness Index — Daily</h3>
         <div class="chart-wrap">
@@ -94,16 +93,11 @@
   </div>
 
 <script>
-// Point to backend API. If you open this page from file://, use absolute URL with 127.0.0.1 to avoid host mismatches.
 const NETWORK_ENDPOINT = 'http://127.0.0.1:4000/network_metrics.json';
+const SALES_ENDPOINT = 'http://127.0.0.1:4000/network_daily_summary.json';
 const HAPPINESS_CSV_ENDPOINT = 'http://127.0.0.1:4000/daily_happiness.csv';
-const NETWORK_REFRESH_MS = 60 * 1000; // 1 min
-const HAPPINESS_REFRESH_MS = 24 * 60 * 60 * 1000; // daily
-
-// Preset configuration for chart seeding
-const PRESET_DAYS = 90;
-const TM_MAGENTA = '#e20074';
-const SEED_KEY = 'happySeed';
+const NETWORK_REFRESH_MS = 60*1000; // 1 min
+const HAPPINESS_REFRESH_MS = 24*60*60*1000; // daily
 
 const networkBody = document.getElementById('network-body');
 const lastNetwork = document.getElementById('last-network');
@@ -113,28 +107,69 @@ const refreshChartBtn = document.getElementById('refresh-chart');
 const todayIndexEl = document.getElementById('today-index');
 
 let happinessChart = null;
-function fmt(n,d=2){return(n===null||n===undefined)?'—':Number(n).toFixed(d);}
+let normalizedSalesData = {}; // sales per tower
 
+// -----------------------------
+// Seed initial data
+// -----------------------------
+function seedInitialData(){
+  const today = new Date();
+  const happinessSeed = [];
+  for(let i=90;i>0;i--){
+    const d=new Date(today); d.setDate(d.getDate()-i);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    happinessSeed.push({date: dateStr, value: Math.floor(Math.random()*101)});
+  }
+  localStorage.setItem('happySeed', JSON.stringify(happinessSeed));
+
+  normalizedSalesData = {};
+  for(let t=1;t<=150;t++){
+    const towerId = 'TMBL-' + String(t).padStart(3,'0');
+    // Random float 0-100 with 2 decimals
+    normalizedSalesData[towerId] = +(Math.random()*100).toFixed(2);
+  }
+}
+
+// -----------------------------
+// Fetch sales at midnight
+// -----------------------------
+async function loadNormalizedSales(){
+  try{
+    const res = await fetch(SALES_ENDPOINT + '?_ts='+Date.now());
+    if(res.ok){
+      const data = await res.json();
+      normalizedSalesData={};
+      data.forEach(r=>{normalizedSalesData[r.tower_id] = +(r.normalized_sales||0).toFixed(2);});
+      console.log('[INFO] Normalized sales updated.');
+    }
+  }catch(err){console.error(err);}
+}
+
+// -----------------------------
+// Network table
+// -----------------------------
 async function loadNetworkMetrics(){
   try{
-    const res = await fetch(NETWORK_ENDPOINT + '?_ts=' + Date.now());
+    const res = await fetch(NETWORK_ENDPOINT+'?_ts='+Date.now());
     if(!res.ok) throw new Error(res.status);
     const data = await res.json();
-    data.sort((a,b) => (b.network_load_percent||0)-(a.network_load_percent||0));
+    data.sort((a,b)=>(b.network_load_percent||0)-(a.network_load_percent||0));
     networkBody.innerHTML='';
     data.slice(0,500).forEach(r=>{
       let outage = r.outage_rate_pct<=1?r.outage_rate_pct*100:r.outage_rate_pct;
+      const normalizedSales = (normalizedSalesData[r.tower_id]||0).toFixed(2);
       const tr=document.createElement('tr');
       tr.innerHTML=`
-        <td><strong>${escapeHtml(r.tower_id||r.market_id||'—')}</strong><div class="tiny">${escapeHtml(r.location||'')}</div></td>
-        <td class="right">${fmt(r.avg_latency_ms||r.latencyMs||0,0)}</td>
-        <td class="right">${fmt(r.avg_packet_loss_pct||r.packet_loss_pct||0,2)}</td>
-        <td class="right">${fmt(outage,2)}%</td>
-        <td class="right">${fmt(r.network_load_percent||0,0)}%</td>
-        <td class="right">${fmt(r.active_sessions||0,0)}</td>
+        <td><strong>${r.tower_id||r.market_id||'—'}</strong><div class="tiny">${r.location||''}</div></td>
+        <td class="right">${(r.avg_latency_ms||0).toFixed(0)}</td>
+        <td class="right">${(r.avg_packet_loss_pct||0).toFixed(2)}</td>
+        <td class="right">${outage.toFixed(2)}%</td>
+        <td class="right">${(r.network_load_percent||0).toFixed(0)}%</td>
+        <td class="right">${(r.active_sessions||0).toFixed(0)}</td>
+        <td class="right">${normalizedSales}</td>
       `;
-      const lat = Number(r.avg_latency_ms||0);
-      const pkt = Number(r.avg_packet_loss_pct||0);
+      const lat = r.avg_latency_ms||0;
+      const pkt = r.avg_packet_loss_pct||0;
       if(lat>120||pkt>2) tr.classList.add('bad');
       else if(lat>80||pkt>1) tr.classList.add('warn');
       else tr.classList.add('good');
@@ -144,37 +179,39 @@ async function loadNetworkMetrics(){
   }catch(err){console.error(err); lastNetwork.textContent='Network updated: (error)';}
 }
 
+// -----------------------------
+// Happiness chart
+// -----------------------------
 async function loadHappinessCSV(){
   try{
-    const res = await fetch(HAPPINESS_CSV_ENDPOINT + '?_ts=' + Date.now());
+    const res = await fetch(HAPPINESS_CSV_ENDPOINT+'?_ts='+Date.now());
     if(!res.ok) throw new Error(res.status);
     const txt = await res.text();
     const lines = txt.trim().split('\n').filter(Boolean);
-    // Parse CSV (if any)
-    let csvPoints = [];
+    let csvPoints=[];
     if(lines.length>1){
-      const header = lines[0].split(',').map(h=>h.trim().toLowerCase());
-      const rows = lines.slice(1).map(l=>{
-        const cols = l.split(',');
+      const header=lines[0].split(',').map(h=>h.trim().toLowerCase());
+      const rows=lines.slice(1).map(l=>{
+        const cols=l.split(',');
         const obj={};
         header.forEach((h,i)=>obj[h]=cols[i]?cols[i].trim():'');
         return obj;
       });
       csvPoints = rows.map(r=>{
-        const dateLabel=r.date||Object.values(r)[0];
-        const val=parseFloat(r.customer_happiness_index||Object.values(r)[1])||0;
+        const dateLabel = r.date||Object.values(r)[0];
+        const val = parseFloat(r.customer_happiness_index||Object.values(r)[1])||0;
         return {date:dateLabel,value:val};
       });
     }
-
-    // Build seeded series with PRESET_DAYS window merged with CSV (CSV overrides seed on same day)
-    const points = buildSeededSeries(csvPoints, PRESET_DAYS);
-    updateHappinessChart(points);
-    lastHappy.textContent='Happiness last date: '+(points.length?points[points.length-1].date:'—');
-    todayIndexEl.textContent="Today's index: "+(points.length?points[points.length-1].value:'—');
-  }catch(err){console.error(err); lastHappy.textContent='Happiness last date: (error)';}
+    const seed = JSON.parse(localStorage.getItem('happySeed')||'[]');
+    const combined = seed.map((s,i)=>csvPoints[i]||s);
+    updateHappinessChart(combined.slice(-90));
+    lastHappy.textContent='Happiness last date: '+(combined.length?combined[combined.length-1].date:'—');
+    todayIndexEl.textContent="Today's index: "+(combined.length?combined[combined.length-1].value:'—');
+  }catch(err){console.error(err);}
 }
 
+// -----------------------------
 function updateHappinessChart(points){
   const ctx=document.getElementById('happinessChart').getContext('2d');
   const labels=points.map(p=>p.date);
@@ -186,92 +223,43 @@ function updateHappinessChart(points){
   }
   happinessChart=new Chart(ctx,{
     type:'line',
-    data:{labels,datasets:[{label:'Customer Happiness Index',data,borderColor:TM_MAGENTA,backgroundColor:'rgba(226,0,116,0.15)',tension:0.3,fill:true,pointRadius:0,borderWidth:2}]},
+    data:{labels,datasets:[{label:'Customer Happiness Index',data,borderColor:'#e20074',backgroundColor:'rgba(226,0,116,0.15)',tension:0.3,fill:true,pointRadius:0,borderWidth:2}]},
     options:{
       responsive:true,maintainAspectRatio:false,
-      scales:{
-        x:{ticks:{color:'#f2cfe0'},grid:{color:'rgba(226,0,116,0.08)'}},
-        y:{beginAtZero:true,ticks:{color:'#f2cfe0'},grid:{color:'rgba(226,0,116,0.08)'}}
-      },
-      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'#0b1220',titleColor:'#e6eef8',bodyColor:'#e6eef8'}}
+      scales:{x:{ticks:{color:'#f2cfe0'}},y:{beginAtZero:true,ticks:{color:'#f2cfe0'}}},
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}}
     }
   });
 }
 
-function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+// -----------------------------
+// Schedule midnight sales update
+// -----------------------------
+function scheduleMidnightSalesUpdate(){
+  const now=new Date();
+  const next=new Date(now); next.setHours(24,0,0,0);
+  const delay = next-now;
+  setTimeout(async ()=>{
+    await loadNormalizedSales();
+    scheduleMidnightSalesUpdate();
+  }, delay);
+}
 
-document.addEventListener('DOMContentLoaded',()=>{
+// -----------------------------
+// Initial load
+// -----------------------------
+document.addEventListener('DOMContentLoaded',async ()=>{
+  seedInitialData();
+  loadNormalizedSales();
   loadNetworkMetrics();
   loadHappinessCSV();
-  setInterval(loadNetworkMetrics,NETWORK_REFRESH_MS);
-  setInterval(loadHappinessCSV,HAPPINESS_REFRESH_MS);
+  setInterval(loadNetworkMetrics, NETWORK_REFRESH_MS);
+  setInterval(loadHappinessCSV, HAPPINESS_REFRESH_MS);
   manualRefreshBtn.addEventListener('click',()=>{loadNetworkMetrics(); loadHappinessCSV();});
   refreshChartBtn.addEventListener('click',()=>loadHappinessCSV());
-  // Schedule an append at midnight to keep the chart lively even without backend daily aggregates
-  scheduleMidnightAppend();
+  scheduleMidnightSalesUpdate();
 });
-
-// ----- Seeding helpers -----
-function buildSeededSeries(csvPoints, days){
-  // Build last N dates (YYYY-MM-DD)
-  const dates = lastNDates(days);
-  // Load existing seed from localStorage
-  let seed = [];
-  try{ seed = JSON.parse(localStorage.getItem(SEED_KEY)||'[]'); }catch(_){ seed = []; }
-  const seedMap = new Map(seed.map(p=>[p.date, Number(p.value)||0]));
-  // CSV overrides seed on same day
-  const csvMap = new Map((csvPoints||[]).map(p=>[p.date, Number(p.value)||0]));
-  // Ensure we have a value for each date; generate random when missing
-  const out = dates.map(d=>{
-    const v = csvMap.has(d) ? csvMap.get(d) : (seedMap.has(d) ? seedMap.get(d) : Math.round(Math.random()*100));
-    return {date:d, value:v};
-  });
-  // Save merged seed back (only dates window)
-  try{ localStorage.setItem(SEED_KEY, JSON.stringify(out)); }catch(_){ }
-  return out;
-}
-
-function lastNDates(n){
-  const arr=[]; const today=new Date();
-  for(let i=n-1;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); arr.push(fmtDate(d)); }
-  return arr;
-}
-
-function fmtDate(d){
-  const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${day}`;
-}
-
-function scheduleMidnightAppend(){
-  const now=new Date();
-  const next=new Date(now);
-  next.setHours(24,0,0,0); // next midnight
-  const wait=next-now;
-  setTimeout(()=>{ appendDailyPoint(); scheduleMidnightAppend(); }, wait);
-}
-
-function appendDailyPoint(){
-  let seed=[]; try{ seed=JSON.parse(localStorage.getItem(SEED_KEY)||'[]'); }catch(_){ seed=[]; }
-  const todayStr = fmtDate(new Date());
-  // If today's point exists, skip; else append a new random value and slide window
-  const exists = seed.some(p=>p.date===todayStr);
-  if(!exists){
-    seed.push({date: todayStr, value: Math.round(Math.random()*100)});
-  }
-  // Keep only last PRESET_DAYS
-  if(seed.length>PRESET_DAYS) seed = seed.slice(seed.length-PRESET_DAYS);
-  try{ localStorage.setItem(SEED_KEY, JSON.stringify(seed)); }catch(_){ }
-  // Update chart if present
-  if(happinessChart){
-    const labels = seed.map(p=>p.date);
-    const data = seed.map(p=>p.value);
-    happinessChart.data.labels=labels;
-    happinessChart.data.datasets[0].data=data;
-    happinessChart.update();
-    lastHappy.textContent='Happiness last date: '+(labels[labels.length-1]||'—');
-    todayIndexEl.textContent="Today's index: "+(data[data.length-1]??'—');
-  }
-}
 </script>
 </body>
 </html>
+
