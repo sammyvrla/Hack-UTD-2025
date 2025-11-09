@@ -71,6 +71,23 @@ app.post('/survey', async (req, res) => {
   }
 });
 
+// Fetch recent surveys (limited) for debugging/verification
+app.get('/surveys/recent', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || '10', 10), 100);
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, submitted_at, customer_id, channel, nps_score, answers
+       FROM customer_surveys
+       ORDER BY submitted_at DESC
+       LIMIT $1`, [limit]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error('surveys/recent error', e);
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
 // Endpoint to fetch recent aggregate
 app.get('/aggregate', async (req, res) => {
   try {
