@@ -73,7 +73,7 @@
           </table>
         </div>
         <footer>
-          <div class="small">Latest snapshot every minute. Normalized sales update daily at midnight.</div>
+          <div class="small">Latest snapshot every minute. Sales are randomized 0–100 on each refresh.</div>
         </footer>
       </div>
 
@@ -122,10 +122,10 @@ function seedInitialData(){
   }
   localStorage.setItem('happySeed', JSON.stringify(happinessSeed));
 
+  // Random normalized sales 0–100 floats with 2 decimals
   normalizedSalesData = {};
   for(let t=1;t<=150;t++){
     const towerId = 'TMBL-' + String(t).padStart(3,'0');
-    // Random float 0-100 with 2 decimals
     normalizedSalesData[towerId] = +(Math.random()*100).toFixed(2);
   }
 }
@@ -157,7 +157,8 @@ async function loadNetworkMetrics(){
     networkBody.innerHTML='';
     data.slice(0,500).forEach(r=>{
       let outage = r.outage_rate_pct<=1?r.outage_rate_pct*100:r.outage_rate_pct;
-      const normalizedSales = (normalizedSalesData[r.tower_id]||0).toFixed(2);
+      // Randomize sales between 0–100 (integer)
+      const normalizedSales = Math.floor(Math.random()*101);
       const tr=document.createElement('tr');
       tr.innerHTML=`
         <td><strong>${r.tower_id||r.market_id||'—'}</strong><div class="tiny">${r.location||''}</div></td>
